@@ -1,0 +1,59 @@
+pipeline{
+    
+    agent any 
+    environment {
+        
+        AWS_ACCOUNT_ID="265965022316"
+        AWS_DEFAULT_REGION="ap-southeast-2"
+        IMAGE_REPO_NAME="jenkinspipelinebuilddemo"
+        IMAGE_TAG="latest"
+        REPOSITORY_URI="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}"
+    }
+    
+    stages{
+        
+        
+        stage('ECR Connection Test'){
+            
+            steps{
+                
+                
+                    sh "aws ecr get-login-password --region ${AWS_DEFAULT_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+                 
+            }
+        }
+        
+        stage('Checkout SCM'){
+            
+            steps{
+                
+                checkout scmGit(branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: '171f6fe5-7363-4a31-a455-d007892e819d', url: 'https://github.com/abhishank03/node-todo-cicd.git']])
+                
+            }
+            
+            
+        }
+        
+        stage ('Build Image From Dockerfile'){
+            
+            steps{
+                
+                sh 'docker build . -t ${IMAGE_REPO_NAME}:${IMAGE_TAG}'
+                
+            }
+        }
+        
+        stage ('Push Image to ECR'){
+            
+            steps{
+                
+                sh "docker tag ${IMAGE_REPO_NAME}:${IMAGE_TAG} ${REPOSITORY_URI}:${IMAGE_TAG}"
+                sh "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}:${IMAGE_TAG}"
+                
+            }
+        }
+        
+        
+    }
+    
+}
